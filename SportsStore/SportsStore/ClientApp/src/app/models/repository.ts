@@ -2,12 +2,17 @@
 import { Injectable } from "@angular/core";
 import { Http, RequestMethod, Request, Response } from "@angular/http";
 import { Observable } from "rxjs";
-import { map } from "rxjs/operators";
+import { map, catchError } from "rxjs/operators";
 import { Filter, Pagination } from "./configClasses.repository";
 import { Supplier } from "./supplier.model";
+import { Order } from "./order.model";
+import { ValidationError } from "../errorHandler.service";
 
 const productsUrl = "/api/products";
 const suppliersUrl = "/api/suppliers";
+const sessionUrl = "/api/session";
+const ordersUrl = "/api/orders";
+const authUrl = "/api/account";
 
 @Injectable()
 export class Repository {
@@ -17,6 +22,7 @@ export class Repository {
 	private suppliersData: Supplier[] = [];
 	private categoriesData: string[] = [];
 	private paginationObject = new Pagination();
+	private ordersData: Order[] = [];
 
 	constructor(private http: Http) {
 		//this.product = JSON.parse(document.getElementById("data").textContent);
@@ -24,7 +30,7 @@ export class Repository {
 		this.filter.related = true;
 		this.getProducts();
 		this.getSuppliers();
-		this.getProduct(2);
+		//this.getProduct(2);
 	}
 
 	getProduct(id: number) {
@@ -130,12 +136,75 @@ export class Repository {
 			});
 	}
 
+	// session data for cart
+	storeSessionData(dataType: string, data: any) {
+		return this.sendRequest(RequestMethod.Post, sessionUrl + "/" + dataType, data)
+			.subscribe(response => { });
+	}
+
+	getSessionData(dataType: string): Observable<any> {
+		return this.sendRequest(RequestMethod.Get, sessionUrl + "/" + dataType);
+	}
+
+	// orders
+	getOrders() {
+		this.sendRequest(RequestMethod.Get, ordersUrl)
+			.subscribe(data => this.ordersData = data);
+	}
+
+	createOrder(order: Order) {
+		this.sendRequest(RequestMethod.Post, ordersUrl, {
+			name: order.name,
+			address: order.address,
+			payment: order.payment,
+			products: order.products
+		}).subscribe(data => {
+			order.orderConfirmation = data;
+			order.cart.clear();
+			order.clear();
+		})
+	}
+
+	shipOrder(order: Order) {
+		this.sendRequest(RequestMethod.Post, ordersUrl + "/" + order.orderId)
+			.subscribe(r => this.getOrders());
+	}
+
+	// authentication & authorization
+	login(name: string, password: string): Observable<Response> {
+		return this.http.post(authUrl + "/login", {
+			name: name,
+			password: password
+		});
+	}
+
+	isLoggedIn(): Observable<Response> {
+		return this.http.post(authUrl + "/loggedin", {});
+	}
+
+	logout() {
+		this.http.post(authUrl + "/logout", null).subscribe(response => { });
+	}
+
 	private sendRequest(verb: RequestMethod, url: string, data?: any): Observable<any> {
 		return this.http.request(new Request({
 			method: verb,
 			url: url,
 			body: data
-		})).pipe(map(response => response.headers.get("Content-Length") != "0" ? response.json() : null));
+		})).pipe(map(response => response.headers.get("Content-Length") != "0" ? response.json() : null))
+			.pipe(catchError((errorResponse: Response) => {
+				if (errorResponse.status == 400) {
+					let jsonData: string;
+					try {
+						jsonData = errorResponse.json();
+					} catch (e) {
+						throw new Error("Network Error");
+					}
+					let messages = Object.getOwnPropertyNames(jsonData).map(p => jsonData[p]);
+					throw new ValidationError(messages);
+				}
+				throw new Error("Network Error");
+		}));
 	}
 
 	get product(): Product {
@@ -162,5 +231,13 @@ export class Repository {
 
 	get pagination(): Pagination {
 		return this.paginationObject;
+	}
+
+	get orders(): Order[] {
+		return this.ordersData;
+	}
+
+	set product(newProduct: Product) {
+		this.productData = newProduct;
 	}
 }

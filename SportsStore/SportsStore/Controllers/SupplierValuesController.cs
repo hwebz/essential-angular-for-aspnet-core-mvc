@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SportsStore.Models;
 using SportsStore.Models.BindingTargets;
@@ -11,6 +12,8 @@ using SportsStore.Models.BindingTargets;
 namespace SportsStore.Controllers
 {
     [Route("api/suppliers")]
+    [Authorize(Roles = "Administrator")]
+    [ValidateAntiForgeryToken]
     public class SupplierValuesController : Controller
     {
         private DataContext context;

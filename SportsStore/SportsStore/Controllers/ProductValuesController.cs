@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,12 +12,15 @@ using SportsStore.Models.BindingTargets;
 namespace SportsStore.Controllers
 {
     [Route("api/products")]
+    [Authorize(Roles = "Administrator")]
+    [ValidateAntiForgeryToken]
     public class ProductValuesController : Controller
     {
         private DataContext context;
         public ProductValuesController(DataContext ctx) => context = ctx;
 
         [HttpGet]
+        [AllowAnonymous]
         public IActionResult GetProducts(string category, string search, bool related = false, bool metadata = false)
         {
             IQueryable<Product> query = context.Products;
@@ -33,7 +37,7 @@ namespace SportsStore.Controllers
                 query = query.Where(p => p.Name.ToLower().Contains(searchLower) || p.Description.ToLower().Contains(searchLower));
             }
 
-            if (related)
+            if (related && HttpContext.User.IsInRole("Administrator"))
             {
                 query = query.Include(p => p.Supplier).Include(p => p.Ratings);
                 List<Product> data = query.ToList();
@@ -63,15 +67,24 @@ namespace SportsStore.Controllers
         }
 
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public Product GetProduct(long id)
         {
             //System.Threading.Thread.Sleep(5000);
             //return context.Products.Find(id);
+            IQueryable<Product> query = context.Products.Include(p => p.Ratings);
 
-            Product result = context.Products
-                                .Include(p => p.Supplier).ThenInclude(s => s.Products)
-                                .Include(p => p.Ratings)
-                                .First(p => p.ProductId == id);
+            if (HttpContext.User.IsInRole("Administrator"))
+            {
+                query = query.Include(p => p.Supplier).ThenInclude(s => s.Products);
+            }
+
+            Product result = query.First(p => p.ProductId == id);
+
+            //Product result = context.Products
+            //                    .Include(p => p.Supplier).ThenInclude(s => s.Products)
+            //                    .Include(p => p.Ratings)
+            //                    .First(p => p.ProductId == id);
 
             // Circular Reference between A -> B and B -> A
             if (result != null)

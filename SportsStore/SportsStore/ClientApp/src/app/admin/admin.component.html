@@ -1,0 +1,30 @@
+﻿<header>
+    <nav class='navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3'>
+        <div class="container">
+            <a class="navbar-brand">SportsStore Dashboard</a>
+            <div class="navbar-collapse collapse d-sm-inline-flex flex-sm-row-reverse">
+                <ul class="navbar-nav flex-grow">
+                    <li class="nav-item">
+                        <a class="nav-link" (click)="authService.logout()">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+</header>
+
+<div class="container">
+    <div class="m-1">
+        <h2 class="text-center">Dashboard</h2>
+        <div class="row">
+            <div class="col-3">
+                <button class="btn btn-block btn-outline-info" routerLink="/admin" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Overview</button>
+                <button class="btn btn-block btn-outline-info" routerLink="/admin/products" routerLinkActive="active">Products</button>
+                <button class="btn btn-block btn-outline-info" routerLink="/admin/orders" routerLinkActive="active">Orders</button>
+            </div>
+            <div class="col p-2">
+                <router-outlet></router-outlet>
+            </div>
+        </div>
+    </div>
+</div>
