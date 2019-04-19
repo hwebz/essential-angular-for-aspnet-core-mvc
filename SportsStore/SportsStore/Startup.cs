@@ -13,15 +13,25 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using SportsStore.Models;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace SportsStore
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+        //public Startup(IConfiguration configuration)
+        // dotnet add SportsStore package Microsoft.Extensions.Configuration.CommandLine
+        public Startup(IHostingEnvironment env)
         {
-            Configuration = configuration;
+            var builder = new ConfigurationBuilder()
+                .SetBasePath(env.ContentRootPath)
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
+                .AddEnvironmentVariables()
+                .AddCommandLine(System.Environment.GetCommandLineArgs().Skip(1).ToArray());
+            //Configuration = configuration;
+            Configuration = builder.Build();
         }
 
         public IConfiguration Configuration { get; }
@@ -118,7 +128,7 @@ namespace SportsStore
             });
         }
         
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory, IAntiforgery antiforgery)
+        public async Task ConfigureAsync(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory, IAntiforgery antiforgery)
         {
             if (env.IsDevelopment())
             {
@@ -164,8 +174,15 @@ namespace SportsStore
                 }
             });
 
-            SeedData.SeedDatabase(app.ApplicationServices.GetRequiredService<DataContext>());
-            IdentitySeedData.SeedDatabase(app);
+            if ((Configuration["INITDB"] ?? "false") == "true")
+            {
+                System.Console.WriteLine("Preparing Database...");
+                SeedData.SeedDatabase(app.ApplicationServices
+                    .GetRequiredService<DataContext>());
+                await IdentitySeedData.SeedDatabase(app);
+                System.Console.WriteLine("Database Preparation Complete");
+                System.Environment.Exit(0);
+            }
         }
     }
 }

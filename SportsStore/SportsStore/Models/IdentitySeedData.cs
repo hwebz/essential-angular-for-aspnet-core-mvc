@@ -14,7 +14,7 @@ namespace SportsStore.Models
         private const string adminPassword = "MySecret123$";
         private const string adminRole = "Administrator";
 
-        public static async void SeedDatabase(IApplicationBuilder app)
+        public static async Task SeedDatabase(IApplicationBuilder app)
         {
             UserManager<IdentityUser> userManager = GetAppService<UserManager<IdentityUser>>(app);
             RoleManager<IdentityRole> roleManager = GetAppService<RoleManager<IdentityRole>>(app);
